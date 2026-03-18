@@ -1,0 +1,9 @@
+{
+  "name": "packing-list-receipt-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "install:all": "npm install && cd client && npm install"
+  }
+}

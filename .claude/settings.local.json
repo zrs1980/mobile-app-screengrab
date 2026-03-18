@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel link:*)",
+      "Bash(mkdir -p \"C:\\\\Claude Projects\\\\mobile-app screengrab\\\\api\")",
+      "Bash(mkdir -p \"C:\\\\Claude Projects\\\\mobile-app screengrab\\\\client\\\\public\")",
+      "Bash(mkdir -p \"C:\\\\Claude Projects\\\\mobile-app screengrab\\\\client\\\\src\\\\store\")",
+      "Bash(mkdir -p \"C:\\\\Claude Projects\\\\mobile-app screengrab\\\\client\\\\src\\\\pages\")",
+      "Bash(mkdir -p \"C:\\\\Claude Projects\\\\mobile-app screengrab\\\\client\\\\src\\\\components\")",
+      "Bash(npm install:*)"
+    ]
+  }
+}
