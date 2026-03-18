@@ -12,7 +12,10 @@ export default function SubsidiaryPicker() {
 
   useEffect(() => {
     fetch('/api/netsuite/subsidiaries', {
-      headers: { 'x-ns-credentials': JSON.stringify(credentials) }
+      headers: {
+        'Authorization': `Bearer ${credentials.accessToken}`,
+        'x-ns-account-id': credentials.accountId,
+      }
     })
       .then(r => r.json())
       .then(d => { setSubsidiaries(d.subsidiaries || []); setLoading(false) })
@@ -23,7 +26,10 @@ export default function SubsidiaryPicker() {
     if (!selectedSub) return
     setLoading(true)
     fetch(`/api/netsuite/locations?subsidiaryId=${selectedSub.id}`, {
-      headers: { 'x-ns-credentials': JSON.stringify(credentials) }
+      headers: {
+        'Authorization': `Bearer ${credentials.accessToken}`,
+        'x-ns-account-id': credentials.accountId,
+      }
     })
       .then(r => r.json())
       .then(d => { setLocations(d.locations || []); setLoading(false) })

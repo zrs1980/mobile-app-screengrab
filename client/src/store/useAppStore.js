@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 const useAppStore = create((set) => ({
-  // Auth
+  // Auth — shape: { accountId, accessToken }
   credentials: null,
   setCredentials: (creds) => set({ credentials: creds }),
   clearCredentials: () => set({ credentials: null, subsidiary: null, location: null, selectedPO: null }),

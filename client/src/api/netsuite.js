@@ -1,6 +1,7 @@
-const getHeaders = (credentials) => ({
+const getHeaders = ({ accountId, accessToken }) => ({
   'Content-Type': 'application/json',
-  'x-ns-credentials': JSON.stringify(credentials),
+  'Authorization': `Bearer ${accessToken}`,
+  'x-ns-account-id': accountId,
 })
 
 export async function getSubsidiaries(credentials) {

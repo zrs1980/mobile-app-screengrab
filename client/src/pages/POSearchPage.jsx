@@ -23,7 +23,10 @@ export default function POSearchPage() {
     try {
       const params = new URLSearchParams({ query: q, subsidiaryId: subsidiary.id })
       const res = await fetch(`/api/netsuite/pos?${params}`, {
-        headers: { 'x-ns-credentials': JSON.stringify(credentials) }
+        headers: {
+          'Authorization': `Bearer ${credentials.accessToken}`,
+          'x-ns-account-id': credentials.accountId,
+        }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -50,7 +53,10 @@ export default function POSearchPage() {
     setLoading(true)
     try {
       const res = await fetch(`/api/netsuite/po/${po.id}`, {
-        headers: { 'x-ns-credentials': JSON.stringify(credentials) }
+        headers: {
+          'Authorization': `Bearer ${credentials.accessToken}`,
+          'x-ns-account-id': credentials.accountId,
+        }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)

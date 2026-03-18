@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAppStore from './store/useAppStore'
 import LoginPage from './pages/LoginPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import POSearchPage from './pages/POSearchPage'
 import CapturePage from './pages/CapturePage'
 import ReviewPage from './pages/ReviewPage'
@@ -17,6 +18,7 @@ export default function App() {
       <div className="min-h-screen bg-navy-900 text-slate-100 max-w-lg mx-auto">
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/po-search" element={<PrivateRoute><POSearchPage /></PrivateRoute>} />
           <Route path="/capture" element={<PrivateRoute><CapturePage /></PrivateRoute>} />
           <Route path="/review" element={<PrivateRoute><ReviewPage /></PrivateRoute>} />

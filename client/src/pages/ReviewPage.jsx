@@ -42,7 +42,8 @@ export default function ReviewPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-ns-credentials': JSON.stringify(credentials)
+          'Authorization': `Bearer ${credentials.accessToken}`,
+          'x-ns-account-id': credentials.accountId,
         },
         body: JSON.stringify({
           purchaseOrderId: selectedPO.id,

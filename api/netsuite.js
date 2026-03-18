@@ -1,4 +1,4 @@
-import { buildNSAuthHeader } from './_nsAuth.js'
+import { buildBearerHeader } from './_nsAuth.js'
 
 /**
  * Vercel serverless function — handles all NetSuite proxy routes:
@@ -8,21 +8,23 @@ import { buildNSAuthHeader } from './_nsAuth.js'
  *   GET  /api/netsuite/pos?subsidiaryId=X&query=Y
  *   GET  /api/netsuite/po/:id
  *   POST /api/netsuite/receipt
+ *
+ * Auth: OAuth 2.0 Bearer token via Authorization header
+ *       Account ID via x-ns-account-id header
  */
 export default async function handler(req, res) {
-  const rawCreds = req.headers['x-ns-credentials']
-  if (!rawCreds) return res.status(401).json({ error: 'Missing credentials header' })
+  const authHeader = req.headers['authorization']
+  const accountId = req.headers['x-ns-account-id']
 
-  let creds
-  try {
-    creds = JSON.parse(rawCreds)
-  } catch {
-    return res.status(400).json({ error: 'Malformed credentials header' })
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' })
+  }
+  if (!accountId) {
+    return res.status(401).json({ error: 'Missing x-ns-account-id header' })
   }
 
-  if (!creds.accountId) return res.status(401).json({ error: 'Missing accountId in credentials' })
+  const accessToken = authHeader.slice(7)
 
-  const { accountId } = creds
   const NS_BASE = `https://${accountId}.suitetalk.api.netsuite.com/services/rest`
   const SUITEQL_URL = `${NS_BASE}/query/v1/suiteql`
 
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
     // ------------------------------------------------------------------
     if (req.method === 'GET' && path === '/subsidiaries') {
       const url = `${NS_BASE}/record/v1/subsidiary?limit=100`
-      const data = await nsGet(url, creds)
+      const data = await nsGet(url, accessToken)
       const subsidiaries = (data.items || []).map(s => ({ id: String(s.id), name: s.name }))
       return res.json({ subsidiaries })
     }
@@ -53,7 +55,7 @@ export default async function handler(req, res) {
           AND isinactive = 'F'
         ORDER BY name
       `
-      const data = await nsSuiteQL(SUITEQL_URL, sql, creds)
+      const data = await nsSuiteQL(SUITEQL_URL, sql, accessToken)
       const locations = (data.items || []).map(l => ({ id: String(l.id), name: l.name }))
       return res.json({ locations })
     }
@@ -80,7 +82,7 @@ export default async function handler(req, res) {
         ORDER BY trandate DESC
         OFFSET 0 ROWS FETCH NEXT 25 ROWS ONLY
       `
-      const data = await nsSuiteQL(SUITEQL_URL, sql, creds)
+      const data = await nsSuiteQL(SUITEQL_URL, sql, accessToken)
       const pos = (data.items || []).map(p => ({
         id: String(p.id),
         tranid: p.tranid,
@@ -98,7 +100,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && poMatch) {
       const id = poMatch[1]
       const url = `${NS_BASE}/record/v1/purchaseOrder/${id}?expandSubResources=true`
-      const data = await nsGet(url, creds)
+      const data = await nsGet(url, accessToken)
       const lines = (data.item?.items || []).map(li => ({
         line: li.line,
         itemId: li.item?.id,
@@ -147,11 +149,10 @@ export default async function handler(req, res) {
       }
 
       const receiptUrl = `${NS_BASE}/record/v1/itemReceipt`
-      const authHeader = buildNSAuthHeader('POST', receiptUrl, creds)
       const createRes = await fetch(receiptUrl, {
         method: 'POST',
         headers: {
-          Authorization: authHeader,
+          Authorization: buildBearerHeader(accessToken),
           'Content-Type': 'application/json',
           Prefer: 'return=representation',
         },
@@ -169,7 +170,7 @@ export default async function handler(req, res) {
       // Attach packing list image (non-fatal if it fails)
       if (image && receiptId) {
         try {
-          await attachImage(NS_BASE, image, receiptId, tranid, today, creds)
+          await attachImage(NS_BASE, image, receiptId, tranid, today, accessToken)
         } catch (attachErr) {
           console.error('Image attachment failed (non-fatal):', attachErr.message)
         }
@@ -195,11 +196,10 @@ export default async function handler(req, res) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function nsGet(url, creds) {
-  const authHeader = buildNSAuthHeader('GET', url, creds)
+async function nsGet(url, accessToken) {
   const res = await fetch(url, {
     headers: {
-      Authorization: authHeader,
+      Authorization: buildBearerHeader(accessToken),
       'Content-Type': 'application/json',
     },
   })
@@ -210,12 +210,11 @@ async function nsGet(url, creds) {
   return res.json()
 }
 
-async function nsSuiteQL(url, sql, creds) {
-  const authHeader = buildNSAuthHeader('POST', url, creds)
+async function nsSuiteQL(url, sql, accessToken) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: authHeader,
+      Authorization: buildBearerHeader(accessToken),
       'Content-Type': 'application/json',
       Prefer: 'transient',
     },
@@ -228,7 +227,7 @@ async function nsSuiteQL(url, sql, creds) {
   return res.json()
 }
 
-async function attachImage(NS_BASE, imageDataUrl, receiptId, tranid, date, creds) {
+async function attachImage(NS_BASE, imageDataUrl, receiptId, tranid, date, accessToken) {
   const base64 = imageDataUrl.split(',')[1]
   const mimeType = imageDataUrl.split(';')[0].split(':')[1] || 'image/jpeg'
   const ext = mimeType === 'image/png' ? 'png' : 'jpg'
@@ -238,16 +237,14 @@ async function attachImage(NS_BASE, imageDataUrl, receiptId, tranid, date, creds
     name: fileName,
     content: base64,
     description: `Packing list for PO ${tranid}`,
-    // folder -15 = SuiteFiles root; update to a specific folder ID if needed
     folder: { id: '-15' },
   }
 
   const fileUrl = `${NS_BASE}/record/v1/file`
-  const authHeader = buildNSAuthHeader('POST', fileUrl, creds)
   const fileRes = await fetch(fileUrl, {
     method: 'POST',
     headers: {
-      Authorization: authHeader,
+      Authorization: buildBearerHeader(accessToken),
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
     },
@@ -257,12 +254,13 @@ async function attachImage(NS_BASE, imageDataUrl, receiptId, tranid, date, creds
   if (!fileRes.ok) throw new Error(await fileRes.text())
   const fileData = await fileRes.json()
 
-  // Link file to the item receipt record
   const linkUrl = `${NS_BASE}/record/v1/itemReceipt/${receiptId}/files`
-  const linkAuth = buildNSAuthHeader('POST', linkUrl, creds)
   await fetch(linkUrl, {
     method: 'POST',
-    headers: { Authorization: linkAuth, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: buildBearerHeader(accessToken),
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ id: fileData.id }),
   })
 }

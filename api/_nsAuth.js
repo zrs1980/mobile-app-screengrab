@@ -56,6 +56,16 @@ export function buildNSAuthHeader(method, url, creds) {
 }
 
 /**
+ * Build a Bearer Authorization header for OAuth 2.0 access tokens.
+ *
+ * @param {string} accessToken
+ * @returns {string}
+ */
+export function buildBearerHeader(accessToken) {
+  return `Bearer ${accessToken}`
+}
+
+/**
  * Percent-encode a string per RFC 3986 (stricter than encodeURIComponent).
  */
 function pct(str) {
